@@ -48,6 +48,8 @@ jobs:
         for file in ${{ steps.files.outputs.files }}
         do
           echo "Testing $file"
-          PGPASSWORD=$POSTGRES_PASSWORD psql -h localhost -U $POSTGRES_USER -d $POSTGRES_DB -f "$file" || exit 1
+          sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
+          -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
+          sudo -u postgres psql -X -f "$file" || exit 1
         done
 
