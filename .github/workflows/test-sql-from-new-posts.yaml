@@ -45,11 +45,11 @@ jobs:
 
     - name: Test SQL files
       run: |
+        sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
+        -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
         for file in ${{ steps.files.outputs.files }}
         do
           echo "Testing $file"
-          sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
-          -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
           sudo -u postgres psql -X -f "$file" || exit 1
         done
 
