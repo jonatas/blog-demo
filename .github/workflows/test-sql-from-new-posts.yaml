@@ -1,0 +1,55 @@
+name: TimescaleDB SQL Test
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - '**.sql'
+
+jobs:
+  test-sql:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16.1-ts2.13.1-all
+        env:
+          POSTGRES_DB: example
+          POSTGRES_USER: user
+          POSTGRES_PASSWORD: password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install PostgreSQL client
+      run: sudo apt-get -y install postgresql-client
+
+    - name: Find SQL files
+      id: files
+      run: |
+        files=$(git diff --name-only --diff-filter=AM origin/main...HEAD -- '*.sql')
+        files="${files//'%'/'%25'}"
+        files="${files//$'\n'/'%0A'}"
+        files="${files//$'\r'/'%0D'}"
+        echo "::set-output name=files::$files"
+
+    - name: Test SQL files
+      run: |
+        sudo -u postgres psql -X -c "CREATE EXTENSION timescaledb" \
+        -c "SELECT extname,extversion,version() FROM pg_extension WHERE extname='timescaledb'"
+        for file in ${{ steps.files.outputs.files }}
+        do
+          echo "Testing $file"
+          sudo -u postgres psql -X -f "$file" || exit 1
+        done
+
